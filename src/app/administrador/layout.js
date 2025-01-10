@@ -1,6 +1,6 @@
 import "./globals.css";
 
-export default function RootLayout({ children }) {
+export default function AdminLayout({ children }) {
   return (
     <html lang="en">
       <body
