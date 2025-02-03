@@ -1,29 +1,60 @@
-// import React from 'react'
+"use client";
 
-// function Pago() {
-//   return (
-//     <div>Aqui va el contenido de pagos</div>
-//   )
-// }
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-// export default Pago
-
-
-
-'use client';
-
-import React, { useState } from 'react';
-
-const Pago = () => {
+const Pagos = () => {
+  const [pagos, setPagos] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState("");
   const [pago, setPago] = useState({
-    nombreUsuario: '',
-    fecha: '',
-    estado: 'Pagado',
-    apartamento: '',
+    monto: "",
+    fechaVencimiento: "",
+    propietarioId: "",
   });
 
-  const [pagos, setPagos] = useState([]);
-  const [filtro, setFiltro] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [propietarios, setPropietarios] = useState([]);
+
+  // 🔹 Obtener los pagos desde la API
+  const fetchPagos = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/api/pagos");
+      setPagos(response.data);
+    } catch (err) {
+      setError("Error al cargar los pagos");
+      showModal("Error al cargar los pagos");
+    }
+  };
+
+  const fetchPropietarios = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/api/propietarios");
+      setPropietarios(response.data);
+      // console.log(`Estos son los porpietarios ${response.data}`);
+    } catch (err) {
+      setError("Error al cargar los propietarios");
+      showModal("Error al cargar los propietarios");
+    }
+  };
+
+  useEffect(() => {
+    fetchPagos();
+    fetchPropietarios();
+  }, []);
+
+  const showModal = (message, type) => {
+    setModalMessage(message);
+    setModalType(type);
+    setModalVisible(true);
+    setTimeout(() => {
+      setModalVisible(false);
+    }, 2000);
+  };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,162 +64,156 @@ const Pago = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    try {
+      const url = "http://localhost:3000/api/pagos";
 
-    // Validación de datos
-    if (!pago.nombreUsuario || !pago.fecha || !pago.apartamento) {
-      alert('Por favor, complete todos los campos.');
-      return;
+      if (isEditing) {
+        await axios.put(`${url}/${pago.id}`, pago);
+        setSuccess("Pago actualizado exitosamente");
+      } else {
+        await axios.post(url, pago);
+        setSuccess("Pago registrado exitosamente");
+        showModal("Pago registrado exitosamente");
+      }
+
+      setIsEditing(false);
+      setPago({
+        monto: "",
+        fechaVencimiento: "",
+        propietarioId: "",
+      });
+
+      fetchPagos();
+    } catch (err) {
+      setError("Error al guardar el pago");
+      showModal("Error al guardar el pago");
     }
-
-    // Verificar si el pago ya fue registrado (duplicado)
-    const pagoExistente = pagos.find((p) => p.nombreUsuario === pago.nombreUsuario && p.fecha === pago.fecha);
-    if (pagoExistente) {
-      alert('El pago para este usuario en esta fecha ya existe.');
-      return;
-    }
-
-    const nuevoPago = {
-      nombreUsuario: pago.nombreUsuario,
-      fecha: pago.fecha,
-      estado: pago.estado,
-      apartamento: pago.apartamento,
-      ultimoPago: new Date().toISOString(),
-    };
-
-    setPagos([nuevoPago, ...pagos]);
-    setPago({ nombreUsuario: '', fecha: '', estado: 'Pagado', apartamento: '' });
-    alert('Pago registrado exitosamente!');
   };
 
-  const handleBusqueda = (e) => {
-    setFiltro(e.target.value);
+  const handleEdit = (pay) => {
+    setPago(pay);
+    setIsEditing(true);
   };
 
-  const pagosFiltrados = pagos.filter(
-    (pago) =>
-      pago.estado.toLowerCase().includes(filtro.toLowerCase()) ||
-      pago.nombreUsuario.toLowerCase().includes(filtro.toLowerCase()) ||
-      pago.apartamento.includes(filtro)
-  );
+  const handleDelete = async (id) => {
+    if (!window.confirm("¿Está seguro de eliminar este pago?")) return;
+
+    try {
+      await axios.delete(`http://localhost:3000/api/pagos/${id}`);
+      setSuccess("Pago eliminado exitosamente");
+      showModal("Pago eliminado exitosamente");
+      fetchPagos();
+    } catch (err) {
+      setError("Error al eliminar el pago");
+      showModal("Error al eliminar el pago");
+    }
+  };
 
   return (
-    <div className="h-full fondo flex flex-col items-center ">
-      {/* Logo */}
-      <div className='h-full w-full flex flex-col items-center gap-1'>
-        <div className="flex justify-center w-full h-[10%] items-center ">
-          <img
-            src="/Logo-VillaSol.png"
-            alt="Logo Conjunto Residencial"
-            className="sm:w-24 md:w-24 lg:w-24 h-24"
-          />
+    <div className="h-full bg-gray-100 p-2">
+      {/* Modal de Error o Éxito */}
+      {modalVisible && (
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg shadow-lg max-w-sm w-full text-center">
+            <p className={`font-bold ${modalType === "error" ? "text-red-700" : "text-green-700"}`}>
+              {modalMessage}
+            </p>
+          </div>
         </div>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Formulario */}
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold mb-6 text-gray-700">
+            {isEditing ? "Editar Pago" : "Nuevo Pago"}
+          </h2>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Monto</label>
+                <input
+                  type="number"
+                  name="monto"
+                  value={pago.monto}
+                  onChange={handleChange}
+                  className="mt-1 block w-full py-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-gray-700"
+                  required
+                />
+              </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Fecha de Vencimiento</label>
+                <input
+                  type="date"
+                  name="fechaVencimiento"
+                  value={pago.fechaVencimiento.split("T")[0]}
+                  onChange={handleChange}
+                  className="mt-1 text-gray-700 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                  required
+                />
+              </div>
 
-        <div className="w-full max-w-lg sm:max-w-3xl h-[65%] bg-black bg-opacity-60 p-4 rounded-lg shadow-lg  mx-4">
-          <form onSubmit={handleSubmit} className='flex flex-col gap-2 bg-white py-5 px-8 rounded-xl shadow-lg w-full h-full'>
-            <div className="">
-              <label htmlFor="nombreUsuario" className="block text-black font-medium">Nombre de Usuario</label>
-              <input
-                type="text"
-                id="nombreUsuario"
-                name="nombreUsuario"
-                value={pago.nombreUsuario}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-black rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300 shadow-md"
-                placeholder="Ingrese el nombre del usuario"
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Propietario</label>
+                <select name="propietarioId"
+                  value={pago.propietarioId}
+                  onChange={handleChange}
+                  className="mt-1 block w-full py-2 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+                >
+                  <option>Seleccione un propietario</option>
+                  {propietarios.map((item) => (
+                    <option
+                      key={item.id}
+                      value={item.id}
+                    >
+                      {item.nombres}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className="">
-              <label htmlFor="fecha" className="block text-black font-medium">Fecha del Pago</label>
-              <input
-                type="date"
-                id="fecha"
-                name="fecha"
-                value={pago.fecha}
-                onChange={handleChange}
-                className="w-full  px-4 py-2 mt-2 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300 shadow-md"
-                required
-              />
-            </div>
-
-            <div className="">
-              <label htmlFor="estado" className="block text-black font-medium">Estado del Pago</label>
-              <select
-                id="estado"
-                name="estado"
-                value={pago.estado}
-                onChange={handleChange}
-                className="w-full  px-4 py-2 mt-2 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300 shadow-md"
-                required
-              >
-                <option value="Pagado">Pagado</option>
-                <option value="Vencido">Vencido</option>
-
-              </select>
-            </div>
-
-            <div className="">
-              <label htmlFor="apartamento" className="block text-black font-medium">Número de Apartamento</label>
-              <input
-                type="text"
-                id="apartamento"
-                name="apartamento"
-                value={pago.apartamento}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300 shadow-md"
-                placeholder="Ingrese el número de apartamento"
-                required
-              />
-            </div>
-
-            <div className="">
               <button
                 type="submit"
-                className="w-full  px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300 shadow-lg"
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
               >
-                Registrar Pago
+                {isEditing ? "Actualizar" : "Registrar"} Pago
               </button>
             </div>
           </form>
         </div>
 
-        {/* Historial de Pagos */}
-        <div className='h-[20%] bg-black bg-opacity-60 flex justify-center items-center p-4 rounded-lg shadow-lg w-full max-w-lg sm:max-w-3xl'>
-          <div className="bg-white px-8 mt-2 rounded-xl shadow-lg w-full h-full  flex flex-col  justify-center  border">
-            <div className="">
-              <input
-                type="text"
-                value={filtro}
-                onChange={handleBusqueda}
-                placeholder="Buscar usuario o N° apartamento"
-                className="w-full  px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-300 transition duration-300 shadow-md"
-              />
-            </div>
-
-            {pagosFiltrados.length > 0 ? (
-              <div className="space-y-4">
-                {pagosFiltrados.map((pago) => (
-                  <div key={pago.nombreUsuario + pago.fecha} className="p-4 border border-gray-200 rounded-md shadow-sm">
-                    <p className="text-black"><strong>Nombre de Usuario:</strong> {pago.nombreUsuario}</p>
-                    <p className="text-black"><strong>Fecha:</strong> {pago.fecha}</p>
-
-                    <p className="text-black"><strong>Apartamento:</strong> {pago.apartamento}</p>
-                    <p className="text-black"><strong>Último Pago:</strong> {new Date(pago.ultimoPago).toLocaleString()}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-black">No se encontraron pagos.</p>
-            )}
-          </div>
+        {/* Tabla de Pagos */}
+        <div className="bg-white p-6 rounded-lg shadow-lg overflow-x-auto">
+          <h2 className="text-2xl font-bold mb-6 text-gray-700">Lista de Pagos</h2>
+          <table className="min-w-full border border-gray-300 text-gray-700">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="border p-2">Monto</th>
+                <th className="border p-2">Fecha de Vencimiento</th>
+                <th className="border p-2">Propietario</th>
+                <th className="border p-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white">
+              {pagos.map((pay) => (
+                <tr key={pay.id} className="border">
+                  <td className="p-2">${pay.monto}</td>
+                  <td className="p-2">{new Date(pay.fechaVencimiento).toLocaleDateString()}</td>
+                  <td className="p-2">{pay.Propietario?.nombres || "Sin propietario"}</td>
+                  <td className="p-2">
+                    <button onClick={() => handleEdit(pay)} className="text-blue-500 hover:underline mr-2">Editar</button>
+                    <button onClick={() => handleDelete(pay.id)} className="text-red-500 hover:underline">Eliminar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
-}
+};
 
-export default Pago;
+export default Pagos;

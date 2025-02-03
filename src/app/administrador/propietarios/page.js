@@ -1,107 +1,176 @@
-// import React from 'react'
+"use client";
 
-// function Propietarios() {
-//   return (
-//     <div>aqui va el contenido de Propietarios</div>
-//   )
-// }
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-// export default Propietarios
+const Propietarios = () => {
+  const [propietarios, setPropietarios] = useState([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState("");
+  const [propietario, setPropietario] = useState({
+
+    nombres: "",
+    documentoIdentidad: "",
+    estadoPago: false,
+    correo: "",
+    telefono: ""
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // 🔹 Obtener propietarios desde la API
+  const fetchPropietarios = async () => {
+    try {
+      const response = await axios.get("http://localhost:3000/api/propietarios");
+      setPropietarios(response.data);
+    } catch (err) {
+      setError("Error al cargar los propietarios");
+      showModal("Error al cargar los propietarios");
+    }
+  };
+
+  useEffect(() => {
+    fetchPropietarios();
+  }, []);
 
 
-import React from 'react';
+  const showModal = (message, type) => {
+    setModalMessage(message);
+    setModalType(type);
+    setModalVisible(true);
+    setTimeout(() => {
+      setModalVisible(false);
+    }, 2000);
+  };
 
-function Propietarios() {
+
+  // 🔹 Manejar cambios en los inputs del formulario
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setPropietario((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // 🔹 Guardar o actualizar propietario
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const url = "http://localhost:3000/api/propietarios";
+
+      if (isEditing) {
+        await axios.put(`${url}/${propietario.id}`, propietario);
+        setSuccess("Propietario actualizado exitosamente");
+      } else {
+        await axios.post(url, propietario);
+        setSuccess("Propietario creado exitosamente");
+        showModal("Propietario creado exitosamente");
+      }
+
+      setIsEditing(false);
+      setPropietario({
+        nombres: "",
+        documentoIdentidad: "",
+        estadoPago: false,
+        correo: "",
+        telefono: ""
+      });
+
+      fetchPropietarios();
+    } catch (err) {
+      setError("Error al guardar el propietario");
+      showModal("Error al guardar los propietarios");
+    }
+  };
+
   return (
-    <div className="h-full fondo">
-      {/* Contenedor principal */}
-      <div className="flex flex-col items-center justify-center">
-        {/* Logo */}
-        <div className="flex justify-center">
-          <img
-            src="/Logo-VillaSol.png"  // Asegúrate de que la imagen esté en la carpeta 'public'
-            alt="Logo Conjunto Residencial"
-            className="w-28 h-28"  // Aumenté el tamaño del logo
-          />
+    <div className="h-full bg-gray-100 p-2">
+        {/* Modal de Error o Éxito */}
+        {modalVisible && (
+        <div className="fixed top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-lg shadow-lg max-w-sm w-full text-center">
+            <p className={`font-bold ${modalType === "error" ? "text-red-700" : "text-green-700"}`}>
+              {modalMessage}
+            </p>
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white py-2 px-6 rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold mb-6 text-gray-700">
+            {isEditing ? "Editar Propietario" : "Nuevo Propietario"}
+          </h2>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <input
+                type="text"
+                name="nombres"
+                value={propietario.nombres}
+                onChange={handleChange}
+                placeholder="Nombre Completo"
+                className="block w-full py-2 rounded-md border-gray-300 shadow-sm"
+                required
+              />
+              <input
+                type="text"
+                name="documentoIdentidad"
+                value={propietario.documentoIdentidad}
+                onChange={handleChange}
+                placeholder="Documento de Identidad"
+                className="block w-full py-2 rounded-md border-gray-300 shadow-sm"
+                required
+              />
+              <input
+                type="email"
+                name="correo"
+                value={propietario.correo}
+                onChange={handleChange}
+                placeholder="Correo Electrónico"
+                className="block w-full py-2 rounded-md border-gray-300 shadow-sm"
+                required
+              />
+              <input
+                type="text"
+                name="telefono"
+                value={propietario.telefono}
+                onChange={handleChange}
+                placeholder="Teléfono"
+                className="block w-full py-2 rounded-md border-gray-300 shadow-sm"
+                required
+              />
+              <button type="submit" className="w-full bg-green-600 text-white py-2 rounded-md">
+                {isEditing ? "Actualizar" : "Crear"} Propietario
+              </button>
+            </div>
+          </form>
         </div>
 
-
-
-        {/* Formulario para gestionar propietarios */}
-        <div className='bg-black bg-opacity-60 p-4 rounded-lg shadow-lg max-w-xl w-full mx-4'>
-          <div className="bg-white px-8 py-5 rounded-xl shadow-xl w-full max-w-3xl">
-            <form className='flex flex-col gap-5'>
-              {/* Nombre del Propietario */}
-              <div className="">
-                <label htmlFor="nombre" className="block text-gray-700  font-medium">Nombre del Propietario</label>
-                <input
-                  type="text"
-                  id="nombre"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-300 transition duration-300"
-                  placeholder="Ingrese el nombre del propietario"
-                />
-              </div>
-
-              {/* Documento de Identidad */}
-              <div className="">
-                <label htmlFor="documento" className="block text-gray-700  font-medium">Documento de Identidad</label>
-                <input
-                  type="text"
-                  id="documento"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-300 transition duration-300"
-                  placeholder="Ingrese el documento de identidad"
-                />
-              </div>
-
-              {/* Teléfono */}
-              <div className="">
-                <label htmlFor="telefono" className="block text-gray-700  font-medium">Teléfono</label>
-                <input
-                  type="tel"
-                  id="telefono"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-300 transition duration-300"
-                  placeholder="Ingrese el número de teléfono"
-                />
-              </div>
-
-              {/* Unidad Asignada */}
-              <div className="">
-                <label htmlFor="unidad" className="block text-gray-700  font-medium">Unidad Asignada</label>
-                <input
-                  type="text"
-                  id="unidad"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-300 transition duration-300"
-                  placeholder="Número de unidad asignada"
-                />
-              </div>
-
-              {/* Verificación de Identidad (Simulada) */}
-              <div className="">
-                <button
-                  type="button"
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300"
-                >
-                  Verificar Identidad
-                </button>
-              </div>
-
-              {/* Botón de Guardar */}
-              <div className="">
-                <button
-                  type="submit"
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-300"
-                >
-                  Guardar Propietario
-                </button>
-              </div>
-            </form>
-          </div>
+        <div className="bg-white py-2 px-6 rounded-lg shadow-lg overflow-x-auto">
+          <h2 className="text-2xl font-bold mb-6 text-gray-700">Lista de Propietarios</h2>
+          <table className="min-w-full border border-gray-300 text-gray-700">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="border p-2">Nombre</th>
+                <th className="border p-2">Documento</th>
+                <th className="border p-2">Correo</th>
+                <th className="border p-2">Teléfono</th>
+              </tr>
+            </thead>
+            <tbody>
+              {propietarios.map((prop) => (
+                <tr key={prop.id} className="border">
+                  <td className="p-2">{prop.nombres}</td>
+                  <td className="p-2">{prop.documentoIdentidad}</td>
+                  <td className="p-2">{prop.correo}</td>
+                  <td className="p-2">{prop.telefono}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default Propietarios;
-
-
